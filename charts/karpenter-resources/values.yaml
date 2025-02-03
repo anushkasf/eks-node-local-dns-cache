@@ -1,0 +1,46 @@
+global:
+  region: us-east-1
+  clusterName: "cluster-name"
+  instanceProfile: instance-profile-name
+  amiIds: []
+  subnetIds: []
+  securityGroupIds: []
+  tags:
+    "Technical:ApplicationID": "APP-002775"
+    "Technical:ApplicationName": "Sysco Shop - Web"
+    "Technical:SubApplicationName": "SHOP-PLATFORM-NONPROD-EKS"
+    "Technical:Environment": "NONPROD"
+    "Technical:PlatformOwner": "CXDevOps@syscolabs.com"
+    "Technical:DevOpsDeny": "true"
+    "Automation:PMC": "Parked on Weekends Fri 7pm - Sun 6pm"
+    "Automation:SnapshotMgmt": "Disabled"
+    "Technical:PatchWindow": "hco-offboard"
+
+nodeClasses:
+  - name: "default"
+    spec: {}
+
+nodePools:
+  - name: "worker"
+    metadata:
+      labels:
+        billing-team: "ct-cx"
+    spec:
+      nodeClass: "default"
+      requirements:
+        instanceCategory: ["t"]
+        instanceFamily: ["t3"]
+        instanceCPU: ["4"]
+        arch: ["amd64"]
+        capacityType: ["spot", "on-demand"]
+      disruption:
+        consolidationPolicy: "WhenEmptyOrUnderutilized"
+        consolidateAfter: "60s"
+        budgets:
+          nodes: "10%"
+      limits:
+        cpu: "40"
+        memory: "100Gi"
+      template:
+        spec:
+          expireAfter: "360h"

@@ -1,0 +1,147 @@
+name: "node-local-dns"
+namespace: "kube-system"
+
+image:
+  repository: registry.k8s.io/dns/k8s-dns-node-cache
+  pullPolicy: IfNotPresent
+  tag: 1.24.0
+
+imagePullSecrets:
+  - name: harbor-artifactory
+  - name: dockerhub-cred
+
+commonLabels:
+  "tags.datadoghq.com/env": "nonprod"
+  "tags.datadoghq.com/service": "node-local-dns"
+
+# serviceaccount
+serviceAccount:
+  create: true
+  labels:
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+  # if automount true then you have to add annotations
+  # annotations:
+  # automount: true
+
+# ConfigMap
+configMap:
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+  corefile:
+    # __PILLAR__DNS__DOMAIN__ = By default "cluster.local"
+    pillarDnsDomain: "cluster.local" 
+    # __PILLAR__DNS__SERVER__ = 172.20.0.10
+    pillarDnsServer: 172.20.0.10
+    # __PILLAR__LOCAL__DNS__ = By default 169.254.20.10 
+    pillarLocalDns: 169.254.20.10
+    cache: 
+      success: 30
+      denial: 5
+    defaultAdditionConfigs: {}
+    inaddr:
+      cache: 30
+    inaddrAdditionConfigs: {}
+    ip6:
+      cache: 30
+    ip6AdditionConfigs: {}
+    "53":
+      cache: 30
+    additionConfigs:
+      - errors
+
+# node-local-dns daemonSet
+daemonSet:
+  metadata:
+    labels:
+      "k8s-app": "node-local-dns"
+      "kubernetes.io/cluster-service": '"true"'
+      "addonmanager.kubernetes.io/mode": "Reconcile"
+  updateStrategy:
+    maxUnavailable: 10%
+  spec:
+    selector:
+      matchLabels: 
+        "k8s-app": "node-local-dns"
+  template:
+    metadata:
+      labels:
+        "k8s-app": "node-local-dns"
+      annotations:
+        "prometheus.io/port": '"9253"'
+        "prometheus.io/scrape": '"true"'
+    priorityClassName: "system-node-critical"
+    serviceAccountName: "node-local-dns"
+    tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - effect: "NoExecute"
+          operator: "Exists"
+        - effect: "NoSchedule"
+          operator: "Exists"
+  container:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 5Mi
+      limits: {}
+      #   cpu:
+      #   memory:
+    args:
+      - "-localip"
+      - "169.254.20.10,172.20.0.10"
+      - "-conf"
+      - "/etc/Corefile"
+      - "-upstreamsvc"
+      - "kube-dns-upstream"
+    ports:
+      - containerPort: 53
+        name: dns
+        protocol: UDP
+      - containerPort: 53
+        name: dns-tcp
+        protocol: TCP
+      - containerPort: 9253
+        name: metrics
+        protocol: TCP
+    livenessProbe:
+      host: "169.254.20.10"
+      initialDelaySeconds: "60"
+      timeoutSeconds: "5"
+
+# kube-dns-upstream service
+kubeDNSUpstreamService:
+  name: "kube-dns-upstream"
+  labels:
+    k8s-app: "kube-dns"
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+    kubernetes.io/name: KubeDNSUpstream
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP
+      targetPort: 53
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+  selectors: {}
+
+# node-local-dns service
+# A headless service is a service with a service IP but instead of load-balancing it will return the IPs of our associated Pods.
+# We use this to expose metrics to Prometheus.
+nodeLocalDNSService:
+  annotations:
+    prometheus.io/port: "9253"
+    prometheus.io/scrape: "true"
+  labels:
+    k8s-app: "node-local-dns"
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9253
+      targetPort: 9253
+  selectors:
+    k8s-app: "node-local-dns"
+

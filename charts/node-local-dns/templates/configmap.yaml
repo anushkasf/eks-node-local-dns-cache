@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- with .Values.configMap.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  Corefile: |
+    {{ .Values.configMap.corefile.pillarDnsDomain }}:53 {
+        errors
+        cache {
+                success 9984 {{ .Values.configMap.corefile.cache.success }}
+                denial 9984 {{ .Values.configMap.corefile.cache.denial }}
+        }
+        reload
+        loop
+        bind {{ .Values.configMap.corefile.pillarLocalDns }} {{ .Values.configMap.corefile.pillarDnsServer }}
+        forward . __PILLAR__CLUSTER__DNS__ {
+                force_tcp
+        }
+        prometheus :9253
+        health {{ .Values.configMap.corefile.pillarLocalDns }}:8080
+        {{- if .Values.configMap.corefile.defaultAdditionConfigs }}
+        {{- range .Values.configMap.corefile.defaultAdditionConfigs }}
+        {{ . | nindent 8 | trim }}
+        {{- end }}
+        {{- end }}
+        }
+    in-addr.arpa:53 {
+        errors
+        cache {{ .Values.configMap.corefile.inaddr.cache }}
+        reload
+        loop
+        bind {{ .Values.configMap.corefile.pillarLocalDns }} {{ .Values.configMap.corefile.pillarDnsServer }}
+        forward . __PILLAR__CLUSTER__DNS__ {
+                force_tcp
+        }
+        prometheus :9253
+        {{- if .Values.configMap.corefile.inaddrAdditionConfigs }}
+        {{- range .Values.configMap.corefile.inaddrAdditionConfigs }}
+        {{ . | nindent 8 | trim }}
+        {{- end }}
+        {{- end }}
+        }
+    ip6.arpa:53 {
+        errors
+        cache {{ .Values.configMap.corefile.ip6.cache }}
+        reload
+        loop
+        bind {{ .Values.configMap.corefile.pillarLocalDns }} {{ .Values.configMap.corefile.pillarDnsServer }}
+        forward . __PILLAR__CLUSTER__DNS__ {
+                force_tcp
+        }
+        prometheus :9253
+        {{- if .Values.configMap.corefile.ip6AdditionConfigs }}
+        {{- range .Values.configMap.corefile.ip6AdditionConfigs }}
+        {{ . | nindent 8 | trim }}
+        {{- end }}
+        {{- end }}
+        }
+    .:53 {
+        cache {{ index .Values.configMap.corefile "53" "cache" }}
+        reload
+        loop
+        bind {{ .Values.configMap.corefile.pillarLocalDns }} {{ .Values.configMap.corefile.pillarDnsServer }}
+        forward . __PILLAR__UPSTREAM__SERVERS__
+        prometheus :9253
+        {{- if .Values.configMap.corefile.additionConfigs }}
+        {{- range .Values.configMap.corefile.additionConfigs }}
+        {{ . | nindent 8 | trim }}
+        {{- end }}
+        {{- end }}
+        }
+
+        

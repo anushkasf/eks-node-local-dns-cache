@@ -1,0 +1,86 @@
+{{- range .Values.nodePools }}
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: {{ .name }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- range $key, $value := .metadata.labels }}
+        {{ $key }}: {{ $value }}
+        {{- end }}
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: {{ .spec.nodeClass }}
+      
+      {{- if .spec.taints }}
+      taints:
+        {{- toYaml .spec.taints | nindent 8 }}
+      {{- end }}
+      expireAfter: {{ .spec.disruption.expireAfter }}
+      {{- if .spec.disruption.budgets }} 
+      requirements:
+        {{- if .spec.requirements.instanceCategory }}
+        - key: "karpenter.k8s.aws/instance-category"
+          operator: In
+          values: 
+            {{- range .spec.requirements.instanceCategory }}
+            - {{ . }}
+            {{- end }}
+          minValues: 1
+        {{- end }}
+        {{- if .spec.requirements.instanceFamily }}
+        - key: "karpenter.k8s.aws/instance-family"
+          operator: In
+          values: 
+            {{- range .spec.requirements.instanceFamily }}
+            - {{ . }}
+            {{- end }}
+          minValues: 1
+        {{- end }}
+        {{- if .spec.requirements.instanceCPU }}
+        - key: "karpenter.k8s.aws/instance-cpu"
+          operator: In
+          values: 
+            {{- range .spec.requirements.instanceCPU }}
+            - "{{ . }}"
+            {{- end }}
+        {{- end }}
+        {{- if .spec.requirements.arch }}
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: 
+            {{- range .spec.requirements.arch }}
+            - {{ . }}
+            {{- end }}
+        {{- end }}
+        {{- if .spec.requirements.capacityType }}
+        - key: "karpenter.sh/capacity-type"
+          operator: In
+          values: 
+            {{- range .spec.requirements.capacityType }}
+            - {{ . }}
+            {{- end }}
+        {{- end }}
+  disruption:
+    consolidationPolicy: {{ .spec.disruption.consolidationPolicy }}
+    {{- if eq .spec.disruption.consolidationPolicy "WhenEmpty"}}
+    consolidateAfter: {{ .spec.disruption.consolidateAfter }}
+    {{- end }}
+    budgets:
+    - nodes: "{{ .spec.disruption.budgets.nodes }}"
+    {{- if .spec.disruption.budgets.schedule }}
+    - schedule: "{{ .spec.disruption.budgets.schedule.start }}"
+      duration: "{{ .spec.disruption.budgets.schedule.duration }}"
+      nodes: "{{ .spec.disruption.budgets.schedule.nodes }}"
+    {{- end }}
+    {{- end }}
+  limits:
+    cpu: {{ .spec.limits.cpu | default "50" }}
+    memory: {{ .spec.limits.memory | default "100" }}
+  weight: {{ .spec.weight | default "100" }}
+---
+{{- end }}

@@ -1,0 +1,53 @@
+# kube-dns-upstream service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.kubeDNSUpstreamService.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- with .Values.kubeDNSUpstreamService.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ports:
+    {{- range .Values.kubeDNSUpstreamService.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      protocol: {{ .protocol }}
+      targetPort: {{ .targetPort }}
+    {{- end }}
+  selector:
+    k8s-app: kube-dns
+    {{- range $key, $value := .Values.kubeDNSUpstreamService.selectors }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+
+---
+# node-local-dns service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- with .Values.nodeLocalDNSService.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{- with .Values.nodeLocalDNSService.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  clusterIP: {{ .Values.nodeLocalDNSService.clusterIP }}
+  ports:
+    {{- range .Values.nodeLocalDNSService.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+    {{- end }}
+  selector:
+    {{- range $key, $value := .Values.nodeLocalDNSService.selectors }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+
+    
