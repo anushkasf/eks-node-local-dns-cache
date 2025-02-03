@@ -1,0 +1,11 @@
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+  source:
+    path: "nonprod"
+    repoURL: "https://github.com/helm/cx-gitops"
+    targetRevision: "master"
+metadata:
+  namespace: argo-cd
+  clusterName: "nonprod"
+  project: devops
