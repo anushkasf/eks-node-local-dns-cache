@@ -1,0 +1,17 @@
+node-local-dns:
+  imagePullSecrets:
+    - name: dockerhub-cred
+
+  image:
+    repository: registry.k8s.io/dns/k8s-dns-node-cache
+    pullPolicy: IfNotPresent
+    tag: 1.24.0
+
+  commonLabels:
+    "tags.datadoghq.com/env": "nonprod"
+    "tags.datadoghq.com/service": "node-local-dns"
+
+  configMap:
+    corefile:
+      additionConfigs:
+        - errors

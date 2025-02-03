@@ -1,0 +1,7 @@
+apiVersion: v2
+name: node-local-dns
+version: 1.0.0
+dependencies:
+  - name: node-local-dns
+    version: 1.24.0
+    repository: oci://<artifactory-hub-url>/helm

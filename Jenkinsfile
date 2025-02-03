@@ -1,4 +1,4 @@
-@Library('infrastructure-pipeline-library@v2') _
+@Library('test-library@v2') _
 node {
     try {
 
